@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
