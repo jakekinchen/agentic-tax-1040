@@ -37,6 +37,18 @@ pnpm smoke:live
 
 `pnpm smoke:live` requires `OPENAI_API_KEY`; normal tests use deterministic stubs.
 
+## Verified Sample Results
+
+The supplied W-2 produces these deterministic 2025 Form 1040 outcomes:
+
+| Filing status | Income | Standard deduction | Taxable income | Tax | Withholding | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Single | $40,000 | $15,750 | $24,250 | $2,675 | $3,200 | $525 refund |
+| Married Filing Jointly | $40,000 | $31,500 | $8,500 | $853 | $3,200 | $2,347 refund |
+| Married Filing Separately | $40,000 | $15,750 | $24,250 | $2,675 | $3,200 | $525 refund |
+
+`pnpm smoke:live` runs the sample through real OpenAI extraction, required agent tool calls, deterministic calculation, and PDF generation.
+
 ## Supported Cases
 
 Tax year 2025, exactly one W-2, wages from $30,000 to $50,000, Single/MFJ/MFS only, no dependents, no credits, no other income, no adjustments, standard deduction only, no direct deposit, no digital-asset Yes answer, and no Schedule 1-A deductions.

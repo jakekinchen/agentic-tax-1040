@@ -13,6 +13,7 @@ import { ConfirmW2PayloadSchema, FilingPayloadSchema, FormFlagsPayloadSchema, Sc
 import { QuestionCopy } from "./copy.js";
 import type { FilingDetails, PersonName } from "../domain/filing.js";
 import type { ScopeAnswers } from "../domain/return.js";
+import type { CanonicalW2 } from "../domain/w2.js";
 
 type UiCard = {
   questionId: QuestionId;
@@ -45,7 +46,7 @@ export type UiState = {
   };
   guardrails: { passed: number; blocked: number };
   harness: { chatLoop: string; toolsInvoked: number; events: number };
-    events: ReturnSession["events"];
+  events: ReturnSession["events"];
 };
 
 function personName(input: PersonName): PersonName {
@@ -86,6 +87,34 @@ function scopeAnswers(input: ReturnType<typeof ScopePayloadSchema.parse>): Scope
     noSchedule1ADeductions: input.noSchedule1ADeductions,
     ...(input.failedCondition ? { failedCondition: input.failedCondition } : {})
   };
+}
+
+function w2ConfirmationSnapshot(w2: CanonicalW2): Record<string, string | number> {
+  return {
+    firstName: w2.employee.firstName,
+    middleInitial: w2.employee.middleInitial ?? "",
+    lastName: w2.employee.lastName,
+    ssn: w2.employee.ssn,
+    street: w2.employee.address.street,
+    apartment: w2.employee.address.apartment ?? "",
+    city: w2.employee.address.city,
+    state: w2.employee.address.state,
+    zip: w2.employee.address.zip,
+    employerName: w2.employer.name,
+    box1Wages: w2.boxes.box1WagesCents / 100,
+    box2FederalWithholding: w2.boxes.box2FederalWithholdingCents / 100,
+    taxYear: w2.taxYear
+  };
+}
+
+function changedConfirmationFields(before: Record<string, string | number>, after: Record<string, string | number>): string[] {
+  return Object.keys(before).filter((key) => before[key] !== after[key]);
+}
+
+function rawStatus(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const status = (payload as { status?: unknown }).status;
+  return typeof status === "string" ? status : null;
 }
 
 function transition(session: ReturnSession, to: ReturnSession["stage"]): void {
@@ -236,6 +265,7 @@ export async function answer(args: {
 
   if (args.questionId === "confirm_w2") {
     if (!args.session.w2) throw new PublicError("No W-2 is available to confirm.", 409, "missing_w2");
+    const before = w2ConfirmationSnapshot(args.session.w2);
     const payload = ConfirmW2PayloadSchema.parse(args.payload);
     args.session.w2.employee = {
       firstName: payload.firstName,
@@ -253,10 +283,29 @@ export async function answer(args: {
     args.session.w2.employer.name = payload.employerName;
     args.session.w2.boxes.box1WagesCents = dollarsToCents(payload.box1Wages);
     args.session.w2.boxes.box2FederalWithholdingCents = dollarsToCents(payload.box2FederalWithholding);
+    const corrected = changedConfirmationFields(before, w2ConfirmationSnapshot(args.session.w2));
+    if (corrected.length > 0) {
+      args.session.events.push(event({
+        category: "chat",
+        name: "w2.user_corrected",
+        status: "succeeded",
+        summary: "User corrected confirmed W-2 fields",
+        metadata: { fieldCount: corrected.length }
+      }));
+    }
     args.session.events.push(event({ category: "chat", name: "question.answered", status: "succeeded", summary: "confirm_w2", metadata: { questionId: "confirm_w2" } }));
     args.session.questionBudget = answerQuestion(args.session.questionBudget, "confirm_w2");
-    transition(args.session, "W2_CONFIRMED");
+    const guard = supportedScopeGuard({ w2: args.session.w2 });
+    if (!guard.supported) unsupported(args.session, guard.reasons[0]?.code ?? "unsupported", guard.reasons[0]?.userMessage ?? "Unsupported W-2");
+    else transition(args.session, "W2_CONFIRMED");
   } else if (args.questionId === "filing_status") {
+    const status = rawStatus(args.payload);
+    if (status && !["single", "married_filing_jointly", "married_filing_separately"].includes(status)) {
+      args.session.events.push(event({ category: "chat", name: "question.answered", status: "succeeded", summary: "filing_status", metadata: { questionId: "filing_status" } }));
+      args.session.questionBudget = answerQuestion(args.session.questionBudget, "filing_status");
+      unsupported(args.session, "unsupported_filing_status", "Head of Household, Qualifying Surviving Spouse, and other filing statuses are outside this prototype.");
+      return getUiState(args.session);
+    }
     const filing = filingDetails(FilingPayloadSchema.parse(args.payload));
     args.session.filing = filing;
     args.session.events.push(event({ category: "chat", name: "question.answered", status: "succeeded", summary: "filing_status", metadata: { questionId: "filing_status" } }));

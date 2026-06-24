@@ -2,18 +2,18 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { loadConfig } from "../src/config.js";
 import { answer, uploadW2 } from "../src/conversation/controller.js";
-import type { FilingDetails } from "../src/domain/filing.js";
 import { SessionStore } from "../src/sessions/store.js";
 
 type EvalCase = {
   id: string;
-  filing: FilingDetails;
-  formFlags: { mainHomeInUS: boolean; digitalAssets: "no" | "yes" };
+  filing: unknown;
+  formFlags?: { mainHomeInUS: boolean; digitalAssets: "no" | "yes" };
   expect: {
     stage: string;
     outcome?: string;
     amount?: number;
     pdfToolCalled: boolean;
+    toolOrder?: string[];
   };
 };
 
@@ -55,15 +55,23 @@ async function runCase(testCase: EvalCase) {
   const session = store.create();
   await uploadW2({ session, config, sample: true, syntheticAcknowledgement: true });
   await answer({ session, config, questionId: "confirm_w2", payload: confirmedW2Payload });
-  await answer({ session, config, questionId: "filing_status", payload: testCase.filing });
-  await answer({ session, config, questionId: "simple_return_scope", payload: scopePayload });
-  const state = await answer({ session, config, questionId: "form_checkboxes", payload: testCase.formFlags });
+  let state = await answer({ session, config, questionId: "filing_status", payload: testCase.filing });
+  if (state.stage !== "UNSUPPORTED") {
+    state = await answer({ session, config, questionId: "simple_return_scope", payload: scopePayload });
+  }
+  if (state.stage !== "UNSUPPORTED") {
+    state = await answer({ session, config, questionId: "form_checkboxes", payload: testCase.formFlags ?? { mainHomeInUS: true, digitalAssets: "no" } });
+  }
   const pdfToolCalled = session.events.some((event) => event.name === "tool.generate_pdf.succeeded");
+  const toolOrder = session.events
+    .map((event) => event.name)
+    .filter((name) => ["tool.extract_w2.succeeded", "tool.calculate.succeeded", "tool.generate_pdf.succeeded"].includes(name));
   const failures: string[] = [];
   if (state.stage !== testCase.expect.stage) failures.push(`stage ${state.stage} !== ${testCase.expect.stage}`);
   if (testCase.expect.outcome && state.result?.outcome !== testCase.expect.outcome) failures.push(`outcome ${state.result?.outcome} !== ${testCase.expect.outcome}`);
   if (testCase.expect.amount !== undefined && state.result?.amount !== testCase.expect.amount) failures.push(`amount ${state.result?.amount} !== ${testCase.expect.amount}`);
   if (pdfToolCalled !== testCase.expect.pdfToolCalled) failures.push(`pdfToolCalled ${pdfToolCalled} !== ${testCase.expect.pdfToolCalled}`);
+  if (testCase.expect.toolOrder && toolOrder.join(",") !== testCase.expect.toolOrder.join(",")) failures.push(`toolOrder ${toolOrder.join(",")} !== ${testCase.expect.toolOrder.join(",")}`);
   if (session.questionBudget.allocated.length > 5) failures.push("question budget exceeded");
   if (session.events.some((event) => /900-12-3456|125 Example Avenue/.test(JSON.stringify(event)))) failures.push("raw PII appeared in events");
   return { id: testCase.id, passed: failures.length === 0, failures, events: session.events.length };

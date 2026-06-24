@@ -68,4 +68,49 @@ describe("2025 Form 1040 PDF generation", () => {
     expect(ppmLooksNonblank(page1)).toBe(true);
     expect(ppmLooksNonblank(page2)).toBe(true);
   });
+
+  it.each([
+    {
+      label: "MFJ",
+      filing: {
+        status: "married_filing_jointly" as const,
+        spouse: { firstName: "Jordan", lastName: "Sample", ssn: "900-12-3457" },
+        spouseHadNoIncome: true,
+        spouseHadNoOtherTaxDocuments: true
+      },
+      mainHomeInUS: true,
+      refund: "2347"
+    },
+    {
+      label: "MFS",
+      filing: {
+        status: "married_filing_separately" as const,
+        spouse: { firstName: "Jordan", lastName: "Sample", ssn: "900-12-3457" },
+        livedApartOrLegallySeparated: false,
+        spouseWillNotItemize: true,
+        noNonresidentAlienRule: true
+      },
+      mainHomeInUS: false,
+      refund: "525"
+    }
+  ])("fills and flattens the sample $label return", async ({ filing, mainHomeInUS, refund }) => {
+    const w2 = sampleCanonicalW2();
+    const computation = compute2025Return({
+      w2,
+      filing,
+      scope,
+      formFlags: { mainHomeInUS, digitalAssets: false }
+    });
+    const artifact = await fill1040For2025({ w2, filing, mainHomeInUS, computation });
+
+    expect(artifact.pageCount).toBe(2);
+    expect(artifact.filledFields.line35a).toBe(refund);
+    expect(artifact.filledFields.line37).toBeUndefined();
+    expect(artifact.filledFields["spouse.firstNameMiddleInitial"]).toBe("Jordan");
+    expect(artifact.filledFields["spouse.lastName"]).toBe("Sample");
+
+    const pdf = await PDFDocument.load(artifact.bytes, { ignoreEncryption: false });
+    expect(pdf.getPageCount()).toBe(2);
+    expect(pdf.getForm().getFields()).toHaveLength(0);
+  });
 });

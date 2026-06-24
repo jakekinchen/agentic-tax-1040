@@ -5,6 +5,8 @@ import { safeArtifactName, assertSafeFilename } from "../../src/pdf/artifact-nam
 import { sampleCanonicalW2 } from "../../src/domain/w2.js";
 import { maskEin, maskName, maskSsn } from "../../src/observability/redact.js";
 import { event } from "../../src/observability/events.js";
+import { loadConfig } from "../../src/config.js";
+import { SessionStore } from "../../src/sessions/store.js";
 
 describe("question budget", () => {
   it("does not allocate duplicate question IDs", () => {
@@ -59,5 +61,36 @@ describe("artifact names and redaction", () => {
     expect(created.metadata.ssn).toBe("[redacted]");
     expect(created.metadata.pdfBytes).toBe("[redacted]");
     expect(created.metadata.wages).toBe(40000);
+  });
+});
+
+describe("session store lifecycle", () => {
+  it("expires sessions and clears sensitive state", () => {
+    const config = loadConfig({ NODE_ENV: "test", TAX_FAKE_MODEL: "1", OPENAI_MODEL: "gpt-5.4-mini-2026-03-17" });
+    const store = new SessionStore(config);
+    const session = store.create();
+    session.pendingUpload = {
+      bytes: new Uint8Array([1, 2, 3]),
+      detectedMime: "application/pdf",
+      originalSize: 3,
+      pageCount: 1
+    };
+    session.expiresAt = new Date(Date.now() - 1_000).toISOString();
+    expect(store.get(session.id)).toBeNull();
+    expect(session.pendingUpload).toBeUndefined();
+  });
+
+  it("evicts least-recently-used sessions when capacity is reached", () => {
+    const config = loadConfig({
+      NODE_ENV: "test",
+      TAX_FAKE_MODEL: "1",
+      OPENAI_MODEL: "gpt-5.4-mini-2026-03-17",
+      MAX_ACTIVE_SESSIONS: "1"
+    });
+    const store = new SessionStore(config);
+    const first = store.create();
+    const second = store.create();
+    expect(store.get(first.id)).toBeNull();
+    expect(store.get(second.id)?.id).toBe(second.id);
   });
 });

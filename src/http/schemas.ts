@@ -18,7 +18,7 @@ export const ConfirmW2PayloadSchema = z.object({
   state: z.string().min(2).max(2),
   zip: z.string().min(5),
   employerName: z.string().min(1),
-  box1Wages: z.number().min(30_000).max(50_000),
+  box1Wages: z.number().nonnegative(),
   box2FederalWithholding: z.number().min(0),
   taxYear: z.literal(2025)
 }).strict();
