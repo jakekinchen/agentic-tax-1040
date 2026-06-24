@@ -21,6 +21,7 @@
     "assets:fetch": "tsx scripts/fetch-irs-assets.ts",
     "assets:verify": "tsx scripts/verify-irs-assets.ts",
     "assets:inspect-fields": "tsx scripts/inspect-1040-fields.ts",
+    "debug:1040-fields": "tsx scripts/render-1040-field-overlay.ts",
     "assets:tax-table": "tsx scripts/extract-tax-table.ts",
     "fixtures:sample": "tsx scripts/generate-sample-w2.ts",
     "smoke:live": "tsx scripts/smoke-live.ts"

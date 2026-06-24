@@ -35,6 +35,11 @@ type InventoryField = {
   rect: { x: number; y: number; width: number; height: number };
 };
 
+type TextDraw = {
+  semantic: Form1040SemanticField;
+  text: string;
+};
+
 const fieldRects = new Map(
   (fieldInventory as { fields: InventoryField[] }).fields.map((field) => [field.name, field.rect])
 );
@@ -63,6 +68,26 @@ function spouseFullName(filing: FilingDetails): string {
   return ensurePdfText(`${filing.spouse.firstName}${filing.spouse.middleInitial ? ` ${filing.spouse.middleInitial}` : ""} ${filing.spouse.lastName}`);
 }
 
+function pageIndexFor(entry: { rawName: string }): number {
+  return entry.rawName.includes("Page2") ? 1 : 0;
+}
+
+function drawY(rect: InventoryField["rect"], fontSize: number): number {
+  return rect.y + (rect.height - fontSize) / 2 + fontSize * 0.22;
+}
+
+function isAmountField(field: Form1040SemanticField): boolean {
+  return field.startsWith("line");
+}
+
+function isCombField(field: Form1040SemanticField): boolean {
+  return field === "taxpayer.ssn" || field === "spouse.ssn";
+}
+
+function isCenteredField(field: Form1040SemanticField): boolean {
+  return field === "address.state" || field === "address.zip";
+}
+
 export async function fill1040For2025(input: Fill1040Input): Promise<Filled1040Artifact> {
   assertTaxComputationInvariants(input.computation);
   const sourcePath = resolve(process.cwd(), "assets", "irs", "2025", "f1040.pdf");
@@ -78,6 +103,7 @@ export async function fill1040For2025(input: Fill1040Input): Promise<Filled1040A
 
   const filledFields: Partial<Record<Form1040SemanticField, string | boolean>> = {};
   const visibleCheckFields: Form1040SemanticField[] = [];
+  const visibleTextFields: TextDraw[] = [];
 
   const setText = (field: Form1040SemanticField, value: string | number | null) => {
     const entry = FORM_1040_2025_FIELD_MAP[field];
@@ -87,8 +113,8 @@ export async function fill1040For2025(input: Fill1040Input): Promise<Filled1040A
       throw new Error(`${field} is not a PDF text field.`);
     }
     if (text) {
-      pdfField.setText(text);
       filledFields[field] = text;
+      visibleTextFields.push({ semantic: field, text });
     }
   };
 
@@ -98,8 +124,6 @@ export async function fill1040For2025(input: Fill1040Input): Promise<Filled1040A
     if (!(pdfField instanceof PDFCheckBox)) {
       throw new Error(`${field} is not a PDF checkbox.`);
     }
-    if (checked) pdfField.check();
-    else pdfField.uncheck();
     filledFields[field] = checked;
     if (checked) visibleCheckFields.push(field);
   };
@@ -155,12 +179,50 @@ export async function fill1040For2025(input: Fill1040Input): Promise<Filled1040A
   form.updateFieldAppearances(font);
   form.flatten({ updateFieldAppearances: false });
   const pages = pdf.getPages();
+  for (const { semantic, text } of visibleTextFields) {
+    const entry = FORM_1040_2025_FIELD_MAP[semantic];
+    const rect = fieldRects.get(entry.rawName);
+    if (!rect) throw new Error(`Missing visual rectangle for ${semantic}`);
+    const page = pages[pageIndexFor(entry)];
+    if (!page) throw new Error(`Missing page for ${semantic}`);
+
+    if (isCombField(semantic)) {
+      const digits = text.replace(/\D/g, "");
+      const fontSize = 7.2;
+      const slotWidth = rect.width / Math.max(digits.length, 1);
+      for (const [index, digit] of [...digits].entries()) {
+        const width = font.widthOfTextAtSize(digit, fontSize);
+        page.drawText(digit, {
+          x: rect.x + slotWidth * index + (slotWidth - width) / 2,
+          y: drawY(rect, fontSize),
+          size: fontSize,
+          font,
+          color: rgb(0.04, 0.08, 0.55)
+        });
+      }
+      continue;
+    }
+
+    const fontSize = isAmountField(semantic) ? 7.4 : 7.6;
+    const width = font.widthOfTextAtSize(text, fontSize);
+    const x = isAmountField(semantic)
+      ? rect.x + rect.width - width - 2
+      : isCenteredField(semantic)
+        ? rect.x + (rect.width - width) / 2
+        : rect.x + 2;
+    page.drawText(text, {
+      x,
+      y: drawY(rect, fontSize),
+      size: fontSize,
+      font,
+      color: rgb(0.04, 0.08, 0.55)
+    });
+  }
   for (const semantic of visibleCheckFields) {
     const entry = FORM_1040_2025_FIELD_MAP[semantic];
     const rect = fieldRects.get(entry.rawName);
     if (!rect) throw new Error(`Missing visual rectangle for ${semantic}`);
-    const pageIndex = entry.rawName.includes("Page2") ? 1 : 0;
-    const page = pages[pageIndex];
+    const page = pages[pageIndexFor(entry)];
     if (!page) throw new Error(`Missing page for ${semantic}`);
     page.drawLine({
       start: { x: rect.x + 1, y: rect.y + 1 },
