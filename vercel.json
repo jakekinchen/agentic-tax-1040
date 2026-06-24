@@ -3,8 +3,8 @@
   "installCommand": "corepack enable && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build",
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "{assets,fixtures,public}/**"
+    "api/index.js": {
+      "includeFiles": "{assets,dist,fixtures,public}/**"
     }
   },
   "rewrites": [
