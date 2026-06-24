@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agentic 2025 Form 1040 Assistant</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="main-panel">
+        <header class="page-header">
+          <div>
+            <h1>Agentic 2025 Form 1040 Assistant</h1>
+            <p>Upload one synthetic 2025 W-2, or use our sample. This educational demo does not file anything and must not be used with real personal information.</p>
+          </div>
+          <button id="reset" type="button">Reset</button>
+        </header>
+
+        <section class="warning" aria-label="Synthetic data warning">
+          <label>
+            <input id="ack" type="checkbox">
+            I am using synthetic data and understand this demo is not a filing service.
+          </label>
+        </section>
+
+        <section id="upload-panel" class="upload-panel">
+          <button id="sample" type="button">Use sample W-2</button>
+          <label class="drop">
+            <span>Choose W-2 PDF, PNG, or JPEG</span>
+            <input id="file" type="file" accept="application/pdf,image/png,image/jpeg">
+          </label>
+          <button id="upload" type="button">Upload W-2</button>
+        </section>
+
+        <section class="conversation" aria-live="polite">
+          <h2>Conversation</h2>
+          <div id="transcript" class="transcript"></div>
+          <div id="card"></div>
+        </section>
+
+        <section id="result" class="result" hidden>
+          <h2>Summary</h2>
+          <dl>
+            <div><dt>Outcome</dt><dd id="result-outcome"></dd></div>
+            <div><dt>Income</dt><dd id="result-income"></dd></div>
+            <div><dt>Taxable income</dt><dd id="result-taxable"></dd></div>
+            <div><dt>Tax</dt><dd id="result-tax"></dd></div>
+            <div><dt>Withholding</dt><dd id="result-withholding"></dd></div>
+          </dl>
+          <a id="download" class="download" href="/api/return.pdf" download hidden>Download completed 2025 Form 1040</a>
+        </section>
+      </section>
+
+      <aside class="side-panel">
+        <section class="status-card">
+          <h2>Harness</h2>
+          <p><span>Chat loop</span><strong id="stage">Active - NEW</strong></p>
+          <p><span>Tools</span><strong id="tools">0 of 3 invoked</strong></p>
+          <p><span>Guardrails</span><strong id="guards">0 passed · 0 blocked</strong></p>
+          <p><span>Observation</span><strong id="event-count">0 events</strong></p>
+          <p><span>Questions used</span><strong id="budget">0 / 5</strong></p>
+          <p><span>Session</span><strong>active</strong></p>
+        </section>
+        <details class="status-card" open>
+          <summary>Guardrails</summary>
+          <ul id="guardrail-list"></ul>
+        </details>
+        <details class="status-card">
+          <summary>How this worked</summary>
+          <ol id="events"></ol>
+        </details>
+      </aside>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

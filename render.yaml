@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: agentic-tax-1040
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4-mini-2026-03-17
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_TTL_MINUTES
+        value: "30"
+      - key: SESSION_MAX_LIFETIME_MINUTES
+        value: "60"
+      - key: MAX_ACTIVE_SESSIONS
+        value: "100"
+      - key: MAX_UPLOAD_BYTES
+        value: "8388608"
+      - key: LOG_LEVEL
+        value: info

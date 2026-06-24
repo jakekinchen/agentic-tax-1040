@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+tests/artifacts/*
+!tests/artifacts/.gitkeep
+evals/results/*
+!evals/results/.gitignore
+playwright-report/
+test-results/
+.playwright-cli/
+.DS_Store

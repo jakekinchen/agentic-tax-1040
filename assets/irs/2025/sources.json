@@ -1,0 +1,26 @@
+[
+  {
+    "document": "Form 1040",
+    "taxYear": 2025,
+    "sourceUrl": "https://www.irs.gov/pub/irs-prior/f1040--2025.pdf",
+    "retrievedAt": "2026-06-24T19:53:18.393Z",
+    "sha256": "3d31c226df0d189ced80e039d01cf0f8820c1019681a0f0ca6264de277b7e982",
+    "pageCount": 2
+  },
+  {
+    "document": "Form 1040 Instructions",
+    "taxYear": 2025,
+    "sourceUrl": "https://www.irs.gov/pub/irs-prior/i1040gi--2025.pdf",
+    "retrievedAt": "2026-06-24T19:53:18.393Z",
+    "sha256": "482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a",
+    "pageCount": 126
+  },
+  {
+    "document": "Form W-2",
+    "taxYear": 2025,
+    "sourceUrl": "https://www.irs.gov/pub/irs-prior/fw2--2025.pdf",
+    "retrievedAt": "2026-06-24T19:53:18.393Z",
+    "sha256": "6a52ad63693de54220a3326b22c4d0fb34f4c25084366537087312975a55ae96",
+    "pageCount": 11
+  }
+]

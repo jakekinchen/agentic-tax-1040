@@ -1,0 +1,45 @@
+{
+  "taxYear": 2025,
+  "employee": {
+    "firstName": "Avery",
+    "lastName": "Sample",
+    "ssn": "900-12-3456",
+    "address": {
+      "street": "125 Example Avenue",
+      "city": "Columbus",
+      "state": "OH",
+      "zip": "43215"
+    }
+  },
+  "employer": {
+    "name": "Example Bicycle Works, Inc.",
+    "ein": "00-1234567",
+    "address": {
+      "street": "480 Demo Plaza",
+      "city": "Columbus",
+      "state": "OH",
+      "zip": "43215"
+    }
+  },
+  "boxes": {
+    "box1WagesCents": 4000000,
+    "box2FederalWithholdingCents": 320000,
+    "box3SocialSecurityWagesCents": 4000000,
+    "box4SocialSecurityTaxCents": 248000,
+    "box5MedicareWagesCents": 4000000,
+    "box6MedicareTaxCents": 58000,
+    "box12": [],
+    "box13": {
+      "statutoryEmployee": false,
+      "retirementPlan": false,
+      "thirdPartySickPay": false
+    },
+    "stateRows": [
+      {
+        "state": "OH",
+        "stateWagesCents": 4000000,
+        "stateWithholdingCents": 120000
+      }
+    ]
+  }
+}
