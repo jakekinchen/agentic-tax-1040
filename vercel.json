@@ -4,7 +4,7 @@
   "buildCommand": "pnpm build",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "assets/**"
+      "includeFiles": "{assets,fixtures,public}/**"
     }
   },
   "rewrites": [
