@@ -28,7 +28,7 @@ type InjectResult = {
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const { app } = await getBuiltApp();
   const payload = await readPayload(request);
-  const inject = app.inject as unknown as (options: {
+  const inject = app.inject.bind(app) as unknown as (options: {
     method: string;
     url: string;
     headers: IncomingHttpHeaders;
