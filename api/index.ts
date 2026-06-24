@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "node:http";
 import { buildApp, type BuiltApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
 
@@ -9,25 +9,41 @@ async function getBuiltApp(): Promise<BuiltApp> {
   return builtApp;
 }
 
-function ensureRawHeaders(request: IncomingMessage): void {
-  if (Array.isArray(request.rawHeaders)) return;
-  const rawHeaders: string[] = [];
-  for (const [key, value] of Object.entries(request.headers)) {
-    if (Array.isArray(value)) {
-      for (const item of value) rawHeaders.push(key, item);
-    } else if (value !== undefined) {
-      rawHeaders.push(key, value);
-    }
+async function readPayload(request: IncomingMessage): Promise<Buffer | undefined> {
+  if (request.method === "GET" || request.method === "HEAD") return undefined;
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  Object.defineProperty(request, "rawHeaders", {
-    configurable: true,
-    enumerable: false,
-    value: rawHeaders
-  });
+  return chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 }
 
+type InjectResult = {
+  statusCode: number;
+  headers: Record<string, string | string[] | number | undefined>;
+  rawPayload?: Buffer;
+  payload: string;
+};
+
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  ensureRawHeaders(request);
   const { app } = await getBuiltApp();
-  app.server.emit("request", request, response);
+  const payload = await readPayload(request);
+  const inject = app.inject as unknown as (options: {
+    method: string;
+    url: string;
+    headers: IncomingHttpHeaders;
+    payload?: Buffer;
+  }) => Promise<InjectResult>;
+  const result = await inject({
+    method: request.method ?? "GET",
+    url: request.url ?? "/",
+    headers: request.headers,
+    ...(payload ? { payload } : {})
+  });
+
+  response.statusCode = result.statusCode;
+  for (const [key, value] of Object.entries(result.headers)) {
+    if (value !== undefined) response.setHeader(key, value);
+  }
+  response.end(result.rawPayload ?? result.payload);
 }
