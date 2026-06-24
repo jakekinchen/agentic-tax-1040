@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "assets/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index"
+    }
+  ]
+}
